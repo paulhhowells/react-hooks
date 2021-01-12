@@ -1,13 +1,57 @@
-import { useState } from React;
+import { useEffect, useState } from 'react';
 
-export default function useFdc3ContextListener (contextTypes = []) {
-	const [contextState, setContextState] = useState({});
+export default function useFdc3ContextListener (
+	fdc3,
+	selectedChannelld,
+	contextTypes = [],
+) {
+	const [fdc3Context, setFdc3Context] = useState({});
 
-	return contextState;
+	useEffect(() => {
+		fdc3.joinChannel(selectedChannelld);
+
+		fdc3
+			.getCurrentChannel ()
+			// TODO replace with a loop through contextTypes
+			.then(channel => channel.getCurrentContext() )
+			.then(newChannelContext => {
+				if (newChannelContext !== null && newChannelContext !== undefined) {
+					const { type, ...rest } = newChannelContext;
+
+					// This only gets the last broadcast context message. Workspace does
+					// not currently store context history. If it did, then you would
+					// need to loop through it here.
+					setFdc3Context(previousContext => ({
+						...previousContext,
+						[type]: { ...rest },
+					}));
+				}
+			});
+	}, [fdc3, selectedChannelld]);
+
+	// Listen for broadcast FDC3 context messages.
+	useEffect(() => {
+
+		// FDC3 Doc: https://github.com/finos/FDC3/blob/master/docs/api/ref/Channel.md#addcontextlistener
+		const { unsubscribe } = fdc3.addContextListener(receivedContextMessage => {
+			const { type, ...rest } = receivedContextMessage;
+
+			// TODO. only if type matches
+			setFdc3Context(previousContext => ({
+				...previousContext,
+				[ type ]: { ...rest },
+			}));
+		});
+
+		return () => unsubscribe;
+	}, [fdc3]);
+
+	return [fdc3Context];
 }
 
+
 const contextTypes = new Map();
-contextTypes.set(ExampleType, 'fcd3.exampleType');
+contextTypes.set('ExampleType', 'fcd3.exampleType');
 
 contextTypes.set('fcd3.exampleType', {
 	type: 'fcd3.exampleType',
