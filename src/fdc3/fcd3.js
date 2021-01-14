@@ -33,12 +33,11 @@ contextTypes.set('ExampleList', {
 
 export default contextTypes;
 
-/*
+/* TODO: remove this WIP note.
 	if type ends in List, then require exampleLists to exist,
 	and notice that it is an array
 	and props.exampleLists to be an array
 	derive its name, unless [] has a string in it, in which case use that instead
-
 	check that items in props have matching type
 */
 
@@ -57,31 +56,49 @@ function getContextDataObject (props = {}) {
 			? deriveListAttributeName(schema.type)
 			: false;
 
+		// If context type ends in List, then expect props to have a corresponding a list.
+		// e.g. expect `contactList` to have `contacts` property.
+		if (listAttributeName && schema[listAttributeName] && (props.hasOwnProperty(listAttributeName) === false)) {
+			throw new Error(`ContextType: ${contextType}: ${listAttributeName} not found.`);
+		}
+
 		return Object.fromEntries(
 			Object.entries(schema)
 				.filter(
 					([schemaKey]) => (schemaKey !== 'getContextDataObject' && schemaKey !== 'type')
 				)
 				.map(([schemaKey, schemaValue]) => {
-					const prop = props[schemaKey];
-
 					// schemaValue should either be:
 					//   a type [Boolean, Number, String], or
 					//   an object literal to traverse, or
-					//   an array of data or contextTypes
-					if (Array.isArray(schemaValue)) {
+					//   an array (for data or contextTypes)
+					// prop should thus be a matching boolean, number, string, object
+					//   or an array of data or contextTypes
 
-					}
-					if (listAttributeName && schemaKey === listAttributeName) {
-
-					}
+					const prop = props[schemaKey];
 
 					if (isObjectLiteral(schemaValue) && isObjectLiteral(prop)) {
 						return [schemaKey, build(schemaValue, prop)];
 					}
 
+					// if (Array.isArray(schemaValue)) {}
+					// if (listAttributeName && schemaKey === listAttributeName) {}
+
+					// TODO: is this superfluous? Just use Array instead of [] ?
+					// Add a test for the items in the array to have an expected type? Or process items differently?
+					// If schemaValue === [] then it is required. Check!
+					if (schemaValue === []) {
+						if (Array.isArray(prop)) {
+							return [schemaKey, prop];
+						}
+
+						throw new Error(
+							`ContextType: ${contextType}: ${schemaValue} is a required prop, and expected to be an Array.`
+						);
+					}
+
 					// if (typeof prop !== schemaValue) { // If schemaValue is a string.
-					// Check that type of prop matches. Expected to be one of [Boolean, Number, String]
+					// Check that type of prop matches. Expected to be one of [Boolean, Number, String, Array]
 					if (prop.constructor !== schemaValue) {
 						throw new Error(
 							`ContextType: ${contextType}: Expected type to be ${schemaValue} but it is ${typeof prop}`
@@ -99,8 +116,9 @@ function isObjectLiteral (item) {
 	return Boolean(item !== null && item.constructor === Object);
 }
 
-// 'fcd3.exampleList' -> 'examples'
 function deriveListAttributeName (type) {
+	// e.g. Derives 'examples' from 'fcd3.exampleList'.
+
 	// Remove "List" suffix, and any namespace prefix that ends with a .
 	const lastIndexOfDot = type.lastIndexOf('.');
 	const sliceStart = (lastIndexOfDot < 0) ? 0 : lastIndexOfDot;
