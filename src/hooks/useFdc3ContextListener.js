@@ -2,13 +2,17 @@ import { useEffect, useState } from 'react';
 
 export default function useFdc3ContextListener (
 	fdc3,
-	selectedChannelId,
+	selectedChannelId = null,
 	contextTypes = [],
 ) {
 	const [fdc3Context, setFdc3Context] = useState({});
 
 	// Join channel to listen on, and gather previously sent context data.
 	useEffect(function joinChannelAndGather () {
+		if (!fdc3 || selectedChannelId === null || contextTypes.length < 1) {
+			return;
+		}
+
 		fdc3.joinChannel(selectedChannelId);
 		fdc3
 			.getCurrentChannel()
@@ -31,6 +35,9 @@ export default function useFdc3ContextListener (
 
 	// Listen for broadcast FDC3 context messages.
 	useEffect(function listenToBroadcast () {
+		if (!fdc3 || contextTypes.length < 1) {
+			return;
+		}
 
 		// FDC3 Doc: https://github.com/finos/FDC3/blob/master/docs/api/ref/Channel.md#addcontextlistener
 		const { unsubscribe } = fdc3.addContextListener(receivedContextMessage => {
