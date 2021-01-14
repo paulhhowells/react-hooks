@@ -13,7 +13,7 @@
 const contextTypes = new Map();
 
 contextTypes.set('Example', {
-	type: 'fcd3.example',
+	type: 'fcd3.example',  // Required
 	name: String,
 	id: {
 		ISIN: String,
@@ -42,7 +42,7 @@ export default contextTypes;
 */
 
 // props = { name: 'example name', id: { isin: 'example isin' }, another: 'example extra prop' }
-function getContextDataObject (props = {}) {
+function getContextDataObject (props = {}, strict = false) {
 	const contextType = this.type;
 	const contextData = {
 		type: this.type,
@@ -62,52 +62,62 @@ function getContextDataObject (props = {}) {
 			throw new Error(`ContextType: ${contextType}: ${listAttributeName} not found.`);
 		}
 
-		return Object.fromEntries(
-			Object.entries(schema)
-				.filter(
-					([schemaKey]) => (schemaKey !== 'getContextDataObject' && schemaKey !== 'type')
-				)
-				.map(([schemaKey, schemaValue]) => {
-					// schemaValue should either be:
-					//   a type [Boolean, Number, String], or
-					//   an object literal to traverse, or
-					//   an array (for data or contextTypes)
-					// prop should thus be a matching boolean, number, string, object
-					//   or an array of data or contextTypes
+		const schemaEntries = Object.entries(schema)
+			.filter(
+				([schemaKey]) => (schemaKey !== 'getContextDataObject' && schemaKey !== 'type')
+			)
+			.map(([schemaKey, schemaValue]) => {
+				// schemaValue should either be:
+				//   a type [Boolean, Number, String], or
+				//   an object literal to traverse, or
+				//   an array (for data or contextTypes)
+				// prop should thus be a matching boolean, number, string, object
+				//   or an array of data or contextTypes
 
-					const prop = props[schemaKey];
+				const prop = props[schemaKey];
 
-					if (isObjectLiteral(schemaValue) && isObjectLiteral(prop)) {
-						return [schemaKey, build(schemaValue, prop)];
+				if (isObjectLiteral(schemaValue) && isObjectLiteral(prop)) {
+					return [schemaKey, build(schemaValue, prop)];
+				}
+
+				// if (Array.isArray(schemaValue)) {}
+				// if (listAttributeName && schemaKey === listAttributeName) {}
+
+				// TODO: is this superfluous? Just use Array instead of [] ?
+				// Add a test for the items in the array to have an expected type? Or process items differently?
+				// If schemaValue === [] then it is required. Check!
+				if (schemaValue === []) {
+					if (Array.isArray(prop)) {
+						return [schemaKey, prop];
 					}
 
-					// if (Array.isArray(schemaValue)) {}
-					// if (listAttributeName && schemaKey === listAttributeName) {}
+					throw new Error(
+						`ContextType: ${contextType}: ${schemaValue} is a required prop, and expected to be an Array.`
+					);
+				}
 
-					// TODO: is this superfluous? Just use Array instead of [] ?
-					// Add a test for the items in the array to have an expected type? Or process items differently?
-					// If schemaValue === [] then it is required. Check!
-					if (schemaValue === []) {
-						if (Array.isArray(prop)) {
-							return [schemaKey, prop];
-						}
+				// if (typeof prop !== schemaValue) { // If schemaValue is a string.
+				// Check that type of prop matches. Expected to be one of [Boolean, Number, String, Array]
+				if (prop.constructor !== schemaValue) {
+					throw new Error(
+						`ContextType: ${contextType}: Expected type to be ${schemaValue} but it is ${typeof prop}`
+					);
+				}
 
-						throw new Error(
-							`ContextType: ${contextType}: ${schemaValue} is a required prop, and expected to be an Array.`
-						);
-					}
+				return [schemaKey, prop];
+			});
 
-					// if (typeof prop !== schemaValue) { // If schemaValue is a string.
-					// Check that type of prop matches. Expected to be one of [Boolean, Number, String, Array]
-					if (prop.constructor !== schemaValue) {
-						throw new Error(
-							`ContextType: ${contextType}: Expected type to be ${schemaValue} but it is ${typeof prop}`
-						);
-					}
+		if (strict) {
+			// Then only include props that match schema.
+			return Object.fromEntries(schemaEntries);
+		}
 
-					return [schemaKey, prop];
-				})
+		// Add any props not included in schema.
+		const propsEntries = Object.entries(props).filter(
+			([propKey]) => Boolean(schema.hasOwnProperty(propKey) === false)
 		);
+
+		return Object.fromEntries(schemaEntries.concat(propsEntries));
 	}
 }
 
