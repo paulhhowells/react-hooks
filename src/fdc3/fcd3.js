@@ -13,7 +13,7 @@
 const contextTypes = new Map();
 
 contextTypes.set('Example', {
-	type: 'fcd3.example',  // Required
+	type: 'fcd3.example', // Required
 	name: String,
 	id: {
 		ISIN: String,
@@ -27,7 +27,7 @@ contextTypes.set('ExampleList', {
 	id: {},
 	examples: [], // Required
 	positions: Array, // TODO: optionally specify what contextType should be inside?
-	data: Array, // optional random stuff
+	extraData: Array, // optional random stuff
 	getContextDataObject,
 });
 
@@ -36,29 +36,29 @@ export default contextTypes;
 /* TODO: remove this WIP note.
 	if type ends in List, then require exampleLists to exist,
 	and notice that it is an array
-	and props.exampleLists to be an array
+	and data.exampleLists to be an array
 	derive its name, unless [] has a string in it, in which case use that instead
-	check that items in props have matching type
+	check that items in data have matching type
 */
 
-// props = { name: 'example name', id: { isin: 'example isin' }, another: 'example extra prop' }
-function getContextDataObject (props = {}, strict = false) {
+// data = { name: 'example name', id: { isin: 'example isin' }, another: 'example extra prop' }
+function getContextDataObject (data = {}, strict = false) {
 	const contextType = this.type;
 	const contextData = {
 		type: this.type,
-		...build(this, props),
+		...build(this, data),
 	};
 
 	return contextData;
 
-	function build (schema, props) {
+	function build (schema, data) {
 		const listAttributeName = (schema.type.slice(-4) === 'List')
 			? deriveListAttributeName(schema.type)
 			: false;
 
-		// If context type ends in List, then expect props to have a corresponding a list.
+		// If context type ends in List, then expect data props to have a corresponding a list.
 		// e.g. expect `contactList` to have `contacts` property.
-		if (listAttributeName && schema[listAttributeName] && (props.hasOwnProperty(listAttributeName) === false)) {
+		if (listAttributeName && schema[listAttributeName] && (data.hasOwnProperty(listAttributeName) === false)) {
 			throw new Error(`ContextType: ${contextType}: ${listAttributeName} not found.`);
 		}
 
@@ -71,13 +71,13 @@ function getContextDataObject (props = {}, strict = false) {
 				//   a type [Boolean, Number, String], or
 				//   an object literal to traverse, or
 				//   an array (for data or contextTypes)
-				// prop should thus be a matching boolean, number, string, object
+				// data prop (datum) should thus be a matching boolean, number, string, object
 				//   or an array of data or contextTypes
 
-				const prop = props[schemaKey];
+				const datum = data[schemaKey];
 
-				if (isObjectLiteral(schemaValue) && isObjectLiteral(prop)) {
-					return [schemaKey, build(schemaValue, prop)];
+				if (isObjectLiteral(schemaValue) && isObjectLiteral(datum)) {
+					return [schemaKey, build(schemaValue, datum)];
 				}
 
 				// if (Array.isArray(schemaValue)) {}
@@ -87,8 +87,8 @@ function getContextDataObject (props = {}, strict = false) {
 				// Add a test for the items in the array to have an expected type? Or process items differently?
 				// If schemaValue === [] then it is required. Check!
 				if (schemaValue === []) {
-					if (Array.isArray(prop)) {
-						return [schemaKey, prop];
+					if (Array.isArray(datum)) {
+						return [schemaKey, datum];
 					}
 
 					throw new Error(
@@ -96,28 +96,28 @@ function getContextDataObject (props = {}, strict = false) {
 					);
 				}
 
-				// if (typeof prop !== schemaValue) { // If schemaValue is a string.
-				// Check that type of prop matches. Expected to be one of [Boolean, Number, String, Array]
-				if (prop.constructor !== schemaValue) {
+				// if (typeof datum !== schemaValue) { // If schemaValue is a string.
+				// Check that type of datum matches. Expected to be one of [Boolean, Number, String, Array]
+				if (datum.constructor !== schemaValue) {
 					throw new Error(
-						`ContextType: ${contextType}: Expected type to be ${schemaValue} but it is ${typeof prop}`
+						`ContextType: ${contextType}: Expected type to be ${schemaValue} but it is ${typeof datum}`
 					);
 				}
 
-				return [schemaKey, prop];
+				return [schemaKey, datum];
 			});
 
 		if (strict) {
-			// Then only include props that match schema.
+			// Then only include data props that match schema.
 			return Object.fromEntries(schemaEntries);
 		}
 
-		// Add any props not included in schema.
-		const propsEntries = Object.entries(props).filter(
-			([propKey]) => Boolean(schema.hasOwnProperty(propKey) === false)
+		// Add any data props not included in schema.
+		const dataEntries = Object.entries(data).filter(
+			([datumKey]) => Boolean(schema.hasOwnProperty(datumKey) === false)
 		);
 
-		return Object.fromEntries(schemaEntries.concat(propsEntries));
+		return Object.fromEntries(schemaEntries.concat(dataEntries));
 	}
 }
 
