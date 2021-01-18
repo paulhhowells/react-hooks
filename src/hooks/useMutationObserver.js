@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export default function useMutationObserver(
 	targetNodeRef,
 	callback,
 	config = { attributes: true, childList: true, subtree: true },
 ) {
+	const memoizedConfig = useMemo(() => (config), [config]);
 	const [result, setResult] = useState();
 	const memoizedCallback = useCallback(
 		(mutationList, observer) => {
@@ -18,11 +19,11 @@ export default function useMutationObserver(
 	useEffect(
 		function initialiseMutationObserver () {
 			const observer = new MutationObserver(memoizedCallback);
-			observer.observe(targetNodeRef, config);
+			observer.observe(targetNodeRef, memoizedConfig);
 
 			return () => observer.disconnect();
 		},
-		[targetNodeRef, callback],
+		[targetNodeRef, callback, memoizedConfig, memoizedCallback],
 	);
 
 	return result;
