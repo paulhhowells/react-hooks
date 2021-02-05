@@ -37,5 +37,7 @@ export const useFetch = (url, config = defaultConfig) => {
 				error => console.error('oh no, login failed', error)
 			)
 			.finally(() => setLoading(false));
+	}, [url, config]);
+
 	return {data, loading};
 };
