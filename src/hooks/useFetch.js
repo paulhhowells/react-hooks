@@ -9,7 +9,9 @@ export const fetchData = async (url, config, options={}) => {
 		.fetch(url, config)
 		.then(async response => {
 			try {
-				const data = await response.json();
+				// responseMethod options include: json() text() formData() blob() arrayBuffer().
+				const responseMethod = options.responseMethod || 'json';
+				const data = await response[responseMethod]();
 
 				if (response.ok) {
 					return data;
@@ -23,7 +25,7 @@ export const fetchData = async (url, config, options={}) => {
 		});
 };
 
-export default function useFetch({url, config = defaultConfig, interval}) {
+export default function useFetch({url, config = defaultConfig, interval, options={}}) {
 	const timeout = useRef();
 	const [data, setData] = useState(null);
 	const [error, setError] = useState(null);
@@ -31,7 +33,7 @@ export default function useFetch({url, config = defaultConfig, interval}) {
 	const getData = useCallback(() => {
 		setLoading(true);
 
-		fetchData(url, config) // process.env.REACT_APP_API_BASE_URL + url
+		fetchData(url, config, options) // process.env.REACT_APP_API_BASE_URL + url
 			.then((data) => setData(data))
 			.catch((error) => {
 				console.error(error);
@@ -46,7 +48,7 @@ export default function useFetch({url, config = defaultConfig, interval}) {
 					timeout.current = setTimeout(() => getData(), interval);
 				}
 			});
-	}, [url, config, interval]);
+	}, [url, config, interval, options]);
 
 	useEffect(() => {
 		getData();
