@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 const defaultConfig = { method: 'GET' };
 
-export const fetchData = async (url, config) => {
+export const fetchData = async (url, config, options={}) => {
 	console.log('REACT_APP_API_BASE_URL', process.env.REACT_APP_API_BASE_URL);
 
 	return window
